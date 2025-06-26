@@ -4,7 +4,7 @@ oauthlib==2.1.0
 requests
 requests-oauthlib==1.0.0
 psycopg2-binary
-peewee>=3.9.6,<3.11.0
+peewee>=3.9.6,<3.17.0
 python-slugify
 emails
 WTForms<3.0.0 # https://dev.to/sm0ke/cannot-import-name-textfield-from-wtforms-58n8
@@ -13,7 +13,7 @@ pycountry
 html2text
 tablib<1.0.0
 openpyxl>=2.4.9,<2.5.0
-PyYAML<6.0
+PyYAML>=6.0,<7.0
 pykwalify
 pybtex
 pybtex-apa-style

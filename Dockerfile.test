@@ -1,0 +1,154 @@
+# syntax=docker/dockerfile:experimental
+FROM centos:centos7
+ENV LANG=en_US.UTF-8
+
+LABEL maintainer="The University of Auckland" \
+  description="NZ ORCiD Hub Application Image with Development support"
+
+ARG http_proxy
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${http_proxy}
+ENV ftp_proxy=${http_proxy}
+
+# Add Shibboleth repo
+ADD https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=CentOS_7 /etc/yum.repos.d/shibboleth.repo
+
+# Copy application files
+COPY conf/app.wsgi /var/www/html/
+COPY conf/app.conf /etc/httpd/conf.d/ZZ-app.conf
+COPY requirements.txt /
+COPY ./conf /conf
+# COPY setup.* orcid* /          # include your application source
+
+# Copy shell scripts
+COPY run-app /usr/local/bin/run-app
+COPY worker.sh /usr/local/bin/worker.sh
+COPY scheduler.sh /usr/local/bin/scheduler.sh
+
+# Ensure Unix line endings and executability for entrypoints and worker scripts
+# RUN find /usr/local/bin -type f \( -name "run-app" -o -name "*.sh" \) -exec sed -i 's/\r$//' {} + && \
+#     chmod +x /usr/local/bin/run-app /usr/local/bin/worker.sh /usr/local/bin/scheduler.sh
+
+# Ensure Unix line endings and executability for entrypoints, worker scripts, and render_template
+RUN find /usr/local/bin -type f \( -name "run-app" -o -name "*.sh" \) -exec sed -i 's/\r$//' {} + && \
+    sed -i 's/\r$//' /conf/render_template && \
+    chmod +x /usr/local/bin/run-app /usr/local/bin/worker.sh /usr/local/bin/scheduler.sh /conf/render_template
+
+
+# COPY run-app /usr/local/bin/
+# Convert run-app to Unix line endings
+# RUN sed -i 's/\r$//' /usr/local/bin/run-app
+
+# Fix CentOS 7 repo URLs to vault to handle EOL mirrors
+RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-Base.repo \
+ && sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=https://vault.centos.org|g' /etc/yum.repos.d/CentOS-Base.repo \
+ && yum clean all \
+ && yum makecache
+
+# Install system dependencies
+RUN yum install -y \
+    https://repo.ius.io/ius-release-el7.rpm \
+    https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    yum update -y && \
+    yum install -y \
+      centos-release-scl \
+      devtoolset-8 \
+      gcc \
+      make \
+      wget \
+      curl \
+      httpd \
+      mod_ssl \
+      httpd-devel \
+      shibboleth.x86_64 \
+      git \
+      openssl11 \
+      openssl11-devel \
+      zlib-devel \
+      readline-devel \
+      sqlite-devel \
+      bzip2-devel \
+      xz-devel \
+      libffi-devel \
+      libuuid-devel \
+      libtirpc-devel \
+      nc
+RUN echo "Downloading and building Python 3.11..."
+RUN curl -O https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tar.xz
+RUN tar xf Python-3.11.2.tar.xz
+
+# RUN cd Python-3.11.2 && \
+#     source /opt/rh/devtoolset-8/enable && \
+#     ./configure --enable-optimizations --enable-shared
+
+
+# 🛠 Point repos to vault archive
+RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-*.repo && \
+    sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=https://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo && \
+    sed -i 's|^#baseurl=http://vault.centos.org|baseurl=https://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
+
+# Fix sclo repos to point to vault.centos.org
+# RUN curl -o /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo https://vault.centos.org/7.9.2009/sclo/x86_64/rh/CentOS-SCLo-scl-rh.repo && \
+#     curl -o /etc/yum.repos.d/CentOS-SCLo-scl.repo https://vault.centos.org/7.9.2009/sclo/x86_64/sclo/CentOS-SCLo-scl.repo
+RUN printf '[centos-sclo-rh]\nname=CentOS-7 - SCLo rh\nbaseurl=http://archive.kernel.org/centos-vault/7.9.2009/sclo/x86_64/rh/\nenabled=1\ngpgcheck=0\n' > /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+    printf '[centos-sclo-sclo]\nname=CentOS-7 - SCLo sclo\nbaseurl=http://archive.kernel.org/centos-vault/7.9.2009/sclo/x86_64/sclo/\nenabled=1\ngpgcheck=0\n' > /etc/yum.repos.d/CentOS-SCLo-scl.repo
+
+
+# Set up OpenSSL 1.1 paths for Python build
+RUN mkdir -p /usr/local/ssl/include /usr/local/ssl/lib && \
+    cp -r /usr/include/openssl11/* /usr/local/ssl/include/ && \
+    cp /usr/lib64/openssl11/libssl.so* /usr/local/ssl/lib/ && \
+    cp /usr/lib64/openssl11/libcrypto.so* /usr/local/ssl/lib/
+
+
+
+# Install SCL and build Python 3.11
+RUN yum install -y scl-utils devtoolset-8 && \
+    cd Python-3.11.2 && \
+    bash -c "source /opt/rh/devtoolset-8/enable && \
+      export CFLAGS='-I/usr/local/ssl/include' && \
+      export LDFLAGS='-L/usr/local/ssl/lib' && \
+      export LD_LIBRARY_PATH='/usr/local/ssl/lib:${LD_LIBRARY_PATH}' && \
+      ./configure --enable-optimizations --enable-shared --with-openssl=/usr/local/ssl && \
+      make -j$(nproc) && \
+      make install" && \
+    cd .. && \
+    rm -rf Python-3.11.2 Python-3.11.2.tar.xz && \
+    echo '/usr/local/lib' > /etc/ld.so.conf.d/local.conf && \
+    ldconfig
+
+RUN python3.11 -c "import ssl; print(ssl.OPENSSL_VERSION)"
+
+# Install Python packages
+RUN python3.11 -m ensurepip && \
+    python3.11 -m pip install -U pip setuptools wheel cython && \
+    python3.11 -m pip install -U mod_wsgi psycopg2-binary && \
+    /usr/local/bin/mod_wsgi-express module-config > /etc/httpd/conf.modules.d/10-wsgi.conf && \
+    python3.11 -m pip install -U -r /requirements.txt && \
+    python3.11 -m pip install -U 'flask<2.3.0'
+
+# Setup shibboleth, permissions
+RUN mkdir -p /var/run/lock /var/lock/subsys && \
+    echo 'export LD_LIBRARY_PATH=/usr/local/lib:/opt/shibboleth/lib64:$LD_LIBRARY_PATH' > /etc/sysconfig/shibd && \
+    # chmod +x /usr/local/bin/run-app && \
+    chmod +x /etc/shibboleth/shibd-redhat
+
+# Optional: clean up build-time deps
+RUN yum erase -y \
+    devtoolset-8 \
+    gcc \
+    gcc-c++ \
+    git \
+    httpd-devel \
+    openssl11-devel \
+    zlib-devel \
+    readline-devel \
+    sqlite-devel \
+    bzip2-devel \
+    xz-devel \
+    libffi-devel && \
+    yum clean all && \
+    rm -rf /var/cache/yum /root/.cache /requirements.txt
+
+EXPOSE 80 443
+CMD ["run-app"]
