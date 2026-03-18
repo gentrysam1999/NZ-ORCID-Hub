@@ -35,15 +35,8 @@ RUN dnf install -y 'dnf-command(config-manager)' \
  && dnf install -y epel-release \
  && dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-$(uname -m)/pgdg-redhat-repo-latest.noarch.rpm \
  && if [ "$(uname -m)" = "x86_64" ]; then \
-       printf '%s\n' \
-         '[shibboleth]' \
-         'name=Shibboleth (Rocky Linux 9)' \
-         'baseurl=https://shibboleth-mirror.cdi.ti.ja.net/rockylinux9/' \
-         '        https://bihs.aco.net/shib/yum/rockylinux9/' \
-         '        https://mirrors.rit.edu/shibboleth/rockylinux9/' \
-         'enabled=1' \
-         'gpgcheck=0' \
-         'repo_gpgcheck=0' > /etc/yum.repos.d/shibboleth.repo; \
+      curl -Lo /etc/yum.repos.d/shibboleth.repo \
+        "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=rockylinux9"; \
     fi \
  && dnf install -y --nodocs --setopt=install_weak_deps=False \
         python3.11 \
@@ -52,6 +45,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         postgresql15 \
         openssl \
         nmap-ncat \
+        initscripts \
  && ln -s /usr/bin/ncat /usr/local/bin/nc \
  && dnf clean all \
  && rm -rf /var/cache/dnf
@@ -70,8 +64,8 @@ RUN /app/venv/bin/mod_wsgi-express module-config > /etc/httpd/conf.modules.d/10-
  && rm -f /etc/httpd/conf.d/ssl.conf \
  && mkdir -p /var/run/lock /var/lock/subsys \
  && (mkdir -p /etc/sysconfig && echo 'export LD_LIBRARY_PATH=/opt/shibboleth/lib64:$LD_LIBRARY_PATH' > /etc/sysconfig/shibd) \
+ && find /conf -type f -exec sed -i 's/\r$//' {} + \
  && find /usr/local/bin -type f \( -name "run-app" -o -name "*.sh" \) -exec sed -i 's/\r$//' {} + \
- && sed -i 's/\r$//' /conf/render_template \
  && chmod +x /usr/local/bin/run-app /usr/local/bin/worker.sh /usr/local/bin/scheduler.sh \
               /conf/render_template \
  && (chmod +x /etc/shibboleth/shibd-redhat 2>/dev/null || true)

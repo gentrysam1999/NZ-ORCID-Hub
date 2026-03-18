@@ -85,6 +85,7 @@ if [ -z "$EXTERNAL_SP" ] ; then
     fi
 
     echo "Rendering Shibboleth configuration template ..."
+    sed -i 's/\r$//' /conf/render_template 2>/dev/null || true
     /conf/render_template /conf/templates/shibboleth2.xml >/etc/shibboleth/shibboleth2.xml
 
     # Run Shibboleth:
@@ -142,6 +143,7 @@ if ! nc -z "$DB_HOST" "$DB_PORT"; then
   exit 1
 fi
 
-
+echo "Initialising / migrating database schema..."
+cd /src && FLASK_APP=orcid_hub flask initdb
 
 exec httpd -DFOREGROUND
