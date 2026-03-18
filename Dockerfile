@@ -34,8 +34,15 @@ ENV http_proxy=${http_proxy} https_proxy=${http_proxy} ftp_proxy=${http_proxy}
 RUN dnf install -y 'dnf-command(config-manager)' \
  && dnf install -y epel-release \
  && dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-$(uname -m)/pgdg-redhat-repo-latest.noarch.rpm \
- && curl -Lo /etc/yum.repos.d/shibboleth.repo \
-      "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=Rocky_9" \
+ && printf '%s\n' \
+      '[shibboleth]' \
+      'name=Shibboleth (Rocky Linux 9)' \
+      'baseurl=https://shibboleth-mirror.cdi.ti.ja.net/rockylinux9/' \
+      '        https://bihs.aco.net/shib/yum/rockylinux9/' \
+      '        https://mirrors.rit.edu/shibboleth/rockylinux9/' \
+      'enabled=1' \
+      'gpgcheck=0' \
+      'repo_gpgcheck=0' > /etc/yum.repos.d/shibboleth.repo \
  && dnf install -y --nodocs --setopt=install_weak_deps=False \
         python3.11 \
         httpd mod_ssl \
