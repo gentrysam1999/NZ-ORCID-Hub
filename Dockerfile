@@ -35,7 +35,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
  && dnf install -y epel-release \
  && dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-$(uname -m)/pgdg-redhat-repo-latest.noarch.rpm \
  && curl -Lo /etc/yum.repos.d/shibboleth.repo \
-      "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=Rocky_9" \
+      "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=rockylinux9" \
  && dnf install -y --nodocs --setopt=install_weak_deps=False \
         python3.11 \
         httpd mod_ssl \
@@ -43,6 +43,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         postgresql15 \
         openssl \
         nmap-ncat \
+        initscripts \
  && ln -s /usr/bin/ncat /usr/local/bin/nc \
  && dnf clean all \
  && rm -rf /var/cache/dnf
@@ -58,8 +59,8 @@ COPY run-app /usr/local/bin/run-app
 RUN /app/venv/bin/mod_wsgi-express module-config > /etc/httpd/conf.modules.d/10-wsgi.conf \
  && mkdir -p /var/run/lock /var/lock/subsys \
  && echo 'export LD_LIBRARY_PATH=/opt/shibboleth/lib64:$LD_LIBRARY_PATH' > /etc/sysconfig/shibd \
- && find /usr/local/bin -type f -name "run-app" -exec sed -i 's/\r$//' {} + \
- && sed -i 's/\r$//' /conf/render_template \
+ && find /conf -type f -exec sed -i 's/\r$//' {} + \
+ && find /usr/local/bin -name "run-app" -exec sed -i 's/\r$//' {} + \
  && chmod +x /usr/local/bin/run-app /conf/render_template /etc/shibboleth/shibd-redhat
 
 EXPOSE 80 443
