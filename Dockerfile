@@ -19,9 +19,6 @@ RUN python3.11 -m venv /app/venv \
  && /app/venv/bin/pip install -U pip setuptools wheel \
  && /app/venv/bin/pip install mod_wsgi psycopg2-binary \
  && /app/venv/bin/pip install -U -r /requirements.txt \
- && /app/venv/bin/pip uninstall -y flask-cli \
- && printf '#!/app/venv/bin/python3.11\nimport re, sys\nfrom flask.cli import main\nif __name__ == "__main__":\n    sys.argv[0] = re.sub(r"(-script\\.pyw|\\.exe)?$", "", sys.argv[0])\n    sys.exit(main())\n' > /app/venv/bin/flask \
- && chmod +x /app/venv/bin/flask \
  && /app/venv/bin/pip install 'setuptools<72'
 
 
