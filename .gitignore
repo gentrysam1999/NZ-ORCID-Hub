@@ -184,3 +184,5 @@ rr.json
 _locustfile.py
 nohup.out
 .squid
+.claude
+CLAUDE.MD
