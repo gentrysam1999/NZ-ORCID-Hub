@@ -4,6 +4,7 @@ services:
 
   db:
     image: postgres:15.2
+    profiles: ["standalone"]
     environment:
       - PGPASSWORD
       - POSTGRES_PASSWORD="${PGPASSWORD:-p455w0rd}"
@@ -26,6 +27,7 @@ services:
 
   redis:
     image: redis:7
+    profiles: ["standalone"]
     restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -86,8 +88,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
     networks:
       default:
         ipv4_address: ${SUBNET:-172.33}.0.99
@@ -116,8 +120,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
       app:
         condition: service_healthy
 
@@ -145,8 +151,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
       app:
         condition: service_healthy
 

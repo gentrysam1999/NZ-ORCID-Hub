@@ -35,8 +35,10 @@ RUN dnf install -y 'dnf-command(config-manager)' \
  && dnf install -y epel-release \
  && dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-$(uname -m)/pgdg-redhat-repo-latest.noarch.rpm \
  && if [ "$(uname -m)" = "x86_64" ]; then \
-      curl -Lo /etc/yum.repos.d/shibboleth.repo \
-        "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=rockylinux9"; \
+      (curl -fsSL -o /etc/yum.repos.d/shibboleth.repo \
+        "https://shibboleth.net/cgi-bin/sp_repo.cgi?platform=rockylinux9" \
+       || curl -fsSL -o /etc/yum.repos.d/shibboleth.repo \
+        "http://shibboleth.net/cgi-bin/sp_repo.cgi?platform=rockylinux9"); \
     fi \
  && dnf install -y --nodocs --setopt=install_weak_deps=False \
         python3.11 \
@@ -53,8 +55,8 @@ RUN dnf install -y 'dnf-command(config-manager)' \
 COPY --from=builder /app/venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 
-COPY conf/app.wsgi /var/www/html/
-COPY conf/app.conf /etc/httpd/conf.d/ZZ-app.conf
+COPY app.wsgi /var/www/orcidhub/
+COPY app.conf /etc/httpd/conf.d/ZZ-app.conf
 COPY ./conf /conf
 COPY run-app /usr/local/bin/run-app
 COPY worker.sh /usr/local/bin/worker.sh
