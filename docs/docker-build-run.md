@@ -54,17 +54,16 @@ curl -sk https://localhost:8443    # expect NZ ORCID Hub HTML
 
 ---
 
-### 2. Test Image (`Dockerfile.test`)
+### 2. Dev Image via docker-compose (`Dockerfile.dev`)
 
-Used by `docker-compose.yml`. Run via Compose with the `standalone` profile to include containerised PostgreSQL and Redis.
+`docker-compose.yml` uses `image: orcidhub/app-dev:latest` — the same image family as the live
+deployments. You must build it locally first with `make build-dev` before running Compose.
 
 ```bash
-# Build
-docker build -f Dockerfile.test -t orcidhub/app-test .
-# or
-make build-test
+# Build (production base first, then dev layer — make build-dev does both)
+make build-dev
 
-# Run (full stack — includes containerised postgres and redis)
+# Run (full stack — includes containerised postgres and redis via standalone profile)
 docker compose --profile standalone up -d
 docker compose ps
 curl -I http://localhost
@@ -155,7 +154,7 @@ docker compose up -d
 
 | | Local Testing | Live VM |
 |---|---|---|
-| **Image source** | Built from source (`docker build`) | Pulled from Docker Hub (`orcidhub/app-dev:8.0`) |
+| **Image source** | Built locally via `make build-dev`, referenced as `orcidhub/app-dev:latest` | Pulled from Docker Hub via `docker compose pull` (`orcidhub/app-dev:8.0`) |
 | **PostgreSQL** | Temporary Docker container | Runs on the VM host, mounted via `/var/run/postgresql` |
 | **Redis** | Docker container (via docker-compose) or none | Runs on the VM host, referenced by `RQ_REDIS_URL` |
 | **SSL certs** | Auto-generated self-signed in `/tmp/orcid-test-keys` | Real certs in `.keys/` directory in each instance folder |

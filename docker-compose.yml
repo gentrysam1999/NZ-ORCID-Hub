@@ -39,9 +39,7 @@ services:
         ipv4_address: ${SUBNET:-172.33}.0.88
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
+    image: orcidhub/app-dev:latest
     environment:
       - ENV
       - EXTERNAL_SP
@@ -73,6 +71,7 @@ services:
       - /var/run/postgresql:/var/run/postgresql
       - .:/src
       - .:/var/www/orcidhub/
+      - ./run-app:/usr/local/bin/run-app
       - ./app.conf:/etc/httpd/conf.d/ZZ-app.conf
       - ./tuakiri-test-metadata-cert.pem:/etc/shibboleth/tuakiri-test-metadata-cert.pem
       - ./tuakiri-metadata-cert.pem:/etc/shibboleth/tuakiri-metadata-cert.pem
@@ -97,9 +96,7 @@ services:
         ipv4_address: ${SUBNET:-172.33}.0.99
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
+    image: orcidhub/app-dev:latest
     command: ["bash", "-c", "sed -i 's/\\r//' ./worker.sh && exec ./worker.sh"]
     working_dir: /src
     environment:
@@ -128,9 +125,7 @@ services:
         condition: service_healthy
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
+    image: orcidhub/app-dev:latest
     command: ["bash", "-c", "sed -i 's/\\r//' ./scheduler.sh && exec ./scheduler.sh"]
     working_dir: /src
     environment:
